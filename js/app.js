@@ -1,19 +1,22 @@
-// Constants
 import * as THREE from './three.module.js'
 import { GUI } from './dat.gui.module.js'
+
+import Particle from './particles.js'
+import Engine from './engine.js'
 
 window.addEventListener('load', init, false);
 
 // Constants
 const boxWidth = 2;
 const boxDepth = 1;
-const boxHeight = 2;
+const boxHeight = 1;
 // GUI setup
 const gui = new GUI();
 const initial_particles_n = 500;
+let initial_particle_radius = 0.008
 const guiOptions = {
     particleCount: initial_particles_n,
-    particleRadius: 0.008,
+    particleRadius: initial_particle_radius,
 };
 //mouse events handling
 let isRotating = false;
@@ -22,7 +25,8 @@ let previousMousePosition = { x: 0, y: 0 };
 //particles
 let particles = [];
 let particleMeshes = [];
-let particleRadius = 0.0005
+
+let engine = new Engine();
 
 //scene constants
 const renderer = new THREE.WebGLRenderer();
@@ -37,7 +41,8 @@ const cubeMaterial = new THREE.MeshBasicMaterial({
 });
 const particleMaterial = new THREE.MeshBasicMaterial({ color: 0x1E90FF});
 const cube = new THREE.Mesh(geometry, cubeMaterial);
-const particleGeometry = new THREE.SphereGeometry(particleRadius, 8, 4);
+
+
 
 function init(){
     initScene();
@@ -46,29 +51,6 @@ function init(){
     animate();
 }
 
-class Particle {
-    constructor(x, y, z, width, height, depth) {
-        this.position = new THREE.Vector3(x, y, z);
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        //this.mass = mass;
-        this.Vx = 0;
-        this.Vy = 0;
-        this.Vz = 0;
-        this.Fx = 0;
-        this.Fy = 0;
-        this.Fz = 0;
-        this.rho = 0;
-        this.P = 0;
-        this.density = 0;
-        this.pressure = 0;
-
-        this.width = width;
-        this.height = height;
-        this.depth = depth;
-    }
-}
 
 function initScene(){
     camera.position.z = 2;
@@ -77,7 +59,7 @@ function initScene(){
     renderer.setAnimationLoop(animate);
     document.body.appendChild(renderer.domElement);
     scene.add(cube);
-    createParticles(initial_particles_n);
+    createParticles(guiOptions.particleCount);
 }
 
 
@@ -88,11 +70,12 @@ function createParticles(count) {
     particles = [];
     particleMeshes = [];
 
+    let particleGeometry = new THREE.SphereGeometry(guiOptions.particleRadius, 8, 4);
 
     // Create new particles
     for (let i = 0; i < count; i++) {
         const x = (Math.random() - 0.5) * boxWidth;
-        const y = 0.5 * boxHeight;
+        const y = 0.5 * boxHeight; //spawn on top of the box
         const z = (Math.random() - 0.5) * boxDepth;
 
         const particle = new Particle(x, y, z, boxWidth, boxHeight, boxDepth);
@@ -112,7 +95,7 @@ function addGUI(){
     });
     
     gui.add(guiOptions, 'particleRadius', 0.004, 0.016).step(0.001).onChange(value => {
-        particleRadius = value;
+        guiOptions.particleRadius = value;
         createParticles(guiOptions.particleCount);
     });
 }
@@ -174,7 +157,7 @@ function addListeners(){
 
 function animate() {
     requestAnimationFrame(animate);
-    //console.log(camera.position)
+    engine.doPhysics();
     particleMeshes.forEach((mesh, index) => {
         mesh.position.copy(particles[index].position);
     });
