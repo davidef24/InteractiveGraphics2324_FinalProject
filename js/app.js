@@ -2,16 +2,65 @@
 import * as THREE from './three.module.js'
 import { GUI } from './dat.gui.module.js'
 
+window.addEventListener('load', init, false);
+
 // Constants
-const boxWidth = 3;
-const boxDepth = 2;
+const boxWidth = 2;
+const boxDepth = 1;
 const boxHeight = 2;
+// GUI setup
+const gui = new GUI();
+const initial_particles_n = 500;
+const guiOptions = {
+    particleCount: initial_particles_n,
+    particleRadius: 0.008,
+};
+//mouse events handling
+let isRotating = false;
+let previousMousePosition = { x: 0, y: 0 };
+
+//particles
+let particles = [];
+let particleMeshes = [];
+let particleRadius = 0.0005
+
+//scene constants
+const renderer = new THREE.WebGLRenderer();
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+const cubeMaterial = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    wireframe: true,
+    wireframeLinewidth: 2,
+});
+const particleMaterial = new THREE.MeshBasicMaterial({ color: 0x1E90FF});
+const cube = new THREE.Mesh(geometry, cubeMaterial);
+const particleGeometry = new THREE.SphereGeometry(particleRadius, 8, 4);
+
+function init(){
+    initScene();
+    addListeners();
+    addGUI();
+    animate();
+}
 
 class Particle {
     constructor(x, y, z, width, height, depth) {
         this.position = new THREE.Vector3(x, y, z);
-        this.velocity = new THREE.Vector3(0, 0, 0);
-        this.acceleration = new THREE.Vector3(0.01, 0.01, 0.01);
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        //this.mass = mass;
+        this.Vx = 0;
+        this.Vy = 0;
+        this.Vz = 0;
+        this.Fx = 0;
+        this.Fy = 0;
+        this.Fz = 0;
+        this.rho = 0;
+        this.P = 0;
         this.density = 0;
         this.pressure = 0;
 
@@ -21,32 +70,16 @@ class Particle {
     }
 }
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+function initScene(){
+    camera.position.z = 2;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xFAEBD7, 1);  // Set background color to antiquewhite
+    renderer.setAnimationLoop(animate);
+    document.body.appendChild(renderer.domElement);
+    scene.add(cube);
+    createParticles(initial_particles_n);
+}
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setAnimationLoop(animate);
-document.body.appendChild(renderer.domElement);
-
-const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-
-// Adjust material properties for transparency and wireframe
-const material = new THREE.MeshBasicMaterial({
-    color: 0xFAEBD7,
-    transparent: true,
-    wireframe: true,
-    wireframeLinewidth: 2,
-});
-
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
-
-const particleGeometry = new THREE.SphereGeometry(0.01, 16, 8);
-const particleMaterial = new THREE.MeshBasicMaterial({ color: 0x1E90FF, transparent: true, wireframe: true });
-
-let particles = [];
-let particleMeshes = [];
 
 // Function to create particles
 function createParticles(count) {
@@ -54,6 +87,7 @@ function createParticles(count) {
     particleMeshes.forEach(mesh => scene.remove(mesh));
     particles = [];
     particleMeshes = [];
+
 
     // Create new particles
     for (let i = 0; i < count; i++) {
@@ -72,23 +106,16 @@ function createParticles(count) {
     }
 }
 
-// Create initial particles
-createParticles(2000);
-
-camera.position.z = 5;
-
-// GUI setup
-const gui = new GUI();
-const guiOptions = {
-    particleCount: 2000,
-};
-
-gui.add(guiOptions, 'particleCount', 0, 2000).step(1).onChange(value => {
-    createParticles(value);
-});
-
-let isRotating = false;
-let previousMousePosition = { x: 0, y: 0 };
+function addGUI(){
+    gui.add(guiOptions, 'particleCount', 0, 4000).step(1).onChange(value => {
+        createParticles(value);
+    });
+    
+    gui.add(guiOptions, 'particleRadius', 0.004, 0.016).step(0.001).onChange(value => {
+        particleRadius = value;
+        createParticles(guiOptions.particleCount);
+    });
+}
 
 function handleMouseDown(event) {
     isRotating = true;
@@ -105,29 +132,27 @@ function handleMouseMove(event) {
     if (isRotating) {
         let deltaMove = { x: event.clientX - previousMousePosition.x, y: event.clientY - previousMousePosition.y };
 
-        cube.rotation.y += deltaMove.x * 0.01;
-        cube.rotation.x += deltaMove.y * 0.01;
+        // Rotate camera around the cube
+        const rotationSpeed = 0.005;
+        const spherical = new THREE.Spherical();
+
+        spherical.setFromVector3(camera.position);
+
+        //adjust spherical coordinates, where theta is the horizontal angle and phi is the vertical angle
+        spherical.theta -= deltaMove.x * rotationSpeed;
+        spherical.phi -= deltaMove.y * rotationSpeed;
+
+        spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, spherical.phi));
+
+        //reconvert into cartesian coordinates
+        camera.position.setFromSpherical(spherical);
+
+        //ensure camera always looks at the center of the cube
+        camera.lookAt(cube.position);
 
         previousMousePosition = { x: event.clientX, y: event.clientY };
     }
 }
-
-const keyState = {
-    ArrowUp: false,
-    ArrowDown: false
-};
-
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-        keyState[event.key] = true;
-    }
-});
-
-document.addEventListener('keyup', (event) => {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-        keyState[event.key] = false;
-    }
-});
 
 function handleMouseWheel(event) {
     let delta = event.deltaY * 0.001;
@@ -138,27 +163,21 @@ function handleMouseUp(event) {
     isRotating = false;
 }
 
-//mouse event listeners
-renderer.domElement.addEventListener('mousedown', handleMouseDown, false);
-renderer.domElement.addEventListener('mousemove', handleMouseMove, false);
-renderer.domElement.addEventListener('mouseup', handleMouseUp, false);
-renderer.domElement.addEventListener('wheel', handleMouseWheel, false);
-window.addEventListener('resize', handleResize);
+function addListeners(){
+    //mouse event listeners
+    renderer.domElement.addEventListener('mousedown', handleMouseDown, false);
+    renderer.domElement.addEventListener('mousemove', handleMouseMove, false);
+    renderer.domElement.addEventListener('mouseup', handleMouseUp, false);
+    renderer.domElement.addEventListener('wheel', handleMouseWheel, false);
+    window.addEventListener('resize', handleResize);
+}
 
 function animate() {
     requestAnimationFrame(animate);
-
-    if (keyState.ArrowUp) {
-        camera.position.y += 0.002;
-    }
-    if (keyState.ArrowDown) {
-        camera.position.y -= 0.002;
-    }
+    //console.log(camera.position)
     particleMeshes.forEach((mesh, index) => {
         mesh.position.copy(particles[index].position);
     });
 
     renderer.render(scene, camera);
 }
-
-animate();
