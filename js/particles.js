@@ -1,11 +1,17 @@
-import * as THREE from './three.module.js'
+let h = 1;     // smoothing length
+let h2 = Math.pow(h, 2);
+let h9 = Math.pow(h, 9);
+let Wpoly6_coeff = 315.0 / (64 * Math.PI * h9);
+
+let initialVelocityMultiplier= 10;
 
 class Particle {
-    constructor(x, y, z, width, height, depth) {
-        this.position = new THREE.Vector3(x, y, z);
-        this.x = x;
-        this.y = y;
-        this.z = z;
+    constructor(particleMesh, domainScale, mass) {
+        //console.log("[PARTICLE] particleMesh received is ", particleMesh);
+        this.x = particleMesh.position.x / domainScale;
+        this.y = particleMesh.position.y /domainScale;
+        this.z = particleMesh.position.z / domainScale;
+        //console.log(`Location x = ${this.x} y = ${this.y} z = ${this.z}`);
         this.Vx = 0;
         this.Vy = 0;
         this.Vz = 0;
@@ -13,18 +19,18 @@ class Particle {
         this.Fy = 0;
         this.Fz = 0;
         this.rho = 0; //density
-        this.P = 0; //pressure
-
-        this.width = width;
-        this.height = height;
-        this.depth = depth;
+        this.P = 0; //pressure    
+        this.m = mass;    
     }
 
-    reset() {
-        this.Fx = 0;
-        this.Fy = 0;
-        this.Fz = 0;
-        this.rho = m * Wpoly6(0);
+    Wpoly6(r2) {
+        let temp = h2 - r2;
+        return Wpoly6_coeff * temp * temp * temp;
+    }
+
+    initForceDensity() {
+        ({ Fx: this.Fx, Fy: this.Fy, Fz: this.Fz } = { Fx: 0, Fy: 0, Fz: 0 });
+        this.rho = this.m * this.Wpoly6(0);
     }
 }
 

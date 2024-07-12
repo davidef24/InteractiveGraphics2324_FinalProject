@@ -1,32 +1,55 @@
 import * as THREE from './three.module.js'
 import { GUI } from './dat.gui.module.js'
-
-import Particle from './particles.js'
 import Engine from './engine.js'
 
-window.addEventListener('load', init, false);
+//window.addEventListener('load', init, false);
 
 // Constants
-const boxWidth = 2;
-const boxDepth = 1;
+const boxWidth = 0.80;
+const boxDepth = 0.35;
 const boxHeight = 1;
 // GUI setup
 const gui = new GUI();
-const initial_particles_n = 500;
-let initial_particle_radius = 0.008
-const guiOptions = {
-    particleCount: initial_particles_n,
-    particleRadius: initial_particle_radius,
+const initial_particles_n = 1000;
+let initial_particle_radius = 0.005;
+let initial_mass = 1.0;	    
+let k = 120; //gas constant		
+let rho0 = 0; //rest density
+let mu = 3; //viscosity		
+let gx = 0;	//gravity		
+let gy = -10;			
+let gz = 0;
+let h = 1; //smoothing length
+//particles
+let particleMeshes = [];
+const panelOptions = {
+    ShowWireFrame: true,
+    ParticleCount: initial_particles_n,
+    ParticleRadius: initial_particle_radius,
+    Mass: initial_mass,
+    RestDensity: rho0,
+    Viscosity: mu,
+    GasConstant: k,
+    SmoothingLength: h,
+    GravityX: gx,
+    GravityY: gy,
+    GravityZ: gz,
+    startSim: function() {
+        startSimulation();
+    }
 };
 //mouse events handling
 let isRotating = false;
 let previousMousePosition = { x: 0, y: 0 };
 
-//particles
-let particles = [];
-let particleMeshes = [];
 
-let engine = new Engine();
+
+
+const halfWidth = boxWidth/2;
+const halfHeight = boxHeight/2;
+const halfDepth = boxDepth/2;
+
+let engine = new Engine(boxWidth, boxHeight, boxDepth, -halfWidth, halfWidth, -halfHeight, halfHeight, -halfDepth, halfDepth);
 
 //scene constants
 const renderer = new THREE.WebGLRenderer();
@@ -37,130 +60,203 @@ const cubeMaterial = new THREE.MeshBasicMaterial({
     color: 0x000000,
     transparent: true,
     wireframe: true,
-    wireframeLinewidth: 2,
+    wireframeLinewidth: 1,
 });
-const particleMaterial = new THREE.MeshBasicMaterial({ color: 0x1E90FF});
+
+const particleMaterial = new THREE.MeshPhongMaterial({ color: 0x1E90FF, transparent: true });
 const cube = new THREE.Mesh(geometry, cubeMaterial);
 
+// Lights
+const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft white light
+scene.add(ambientLight);
+
+const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+pointLight.position.set(1, 2, 2);
+scene.add(pointLight);
+
+
+
+function updateParticleCount(n) {
+    particleMeshes.forEach(mesh => scene.remove(mesh));
+    // Reset the engine if the new count is less than the current count
+    if (n < particleMeshes.length) {
+        engine.reset();
+    }
+    particleMeshes = new Array(n);
+
+    let particleGeometry = new THREE.SphereGeometry(panelOptions.ParticleRadius, 16, 8);
+    for (var i = 0; i < n; i++) {
+        var m = new THREE.Mesh(particleGeometry, particleMaterial);
+        m.position.x = (Math.random() - 0.5) * boxWidth;
+        m.position.y = (Math.random() * 0.5) * boxHeight; 
+        m.position.z = (Math.random() - 0.5) * boxDepth;
+        //console.log(" [SET NUM PARTICLES APP] Particle MESH after definition ", m);
+        particleMeshes[i] = m;
+        //console.log("[SET NUM PARTICLES APP] Particle meshes after setting i-th array entry ", i, particleMeshes);
+        scene.add(m);
+    }
+    //console.log("[SET NUM PARTICLES APP] Particle meshes after definition ", particleMeshes);
+    engine.updateParticleCount(n, [boxWidth, boxHeight, boxDepth], particleMeshes, panelOptions.Mass);
+    renderer.render(scene, camera);
+}
 
 
 function init(){
+    updateFluidProperties();
+    updateGravity();
     initScene();
     addListeners();
-    addGUI();
-    animate();
+    updateParticleCount(panelOptions.ParticleCount);
+    setGuiPanel();
 }
 
 
 function initScene(){
-    camera.position.z = 2;
+    camera.position.z = 1;
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0xFAEBD7, 1);  // Set background color to antiquewhite
-    renderer.setAnimationLoop(animate);
     document.body.appendChild(renderer.domElement);
     scene.add(cube);
-    createParticles(guiOptions.particleCount);
+}
+
+function updateFluidProperties() {
+    let h= panelOptions.SmoothingLength;
+    let mass = panelOptions.Mass;
+    let gasConstant = panelOptions.GasConstant;
+    let restDensity = panelOptions.RestDensity;
+    let viscosity = panelOptions.Viscosity;
+    engine.setFluidProperties(mass, gasConstant, restDensity, viscosity, h);
+}
+
+function updateGravity() {
+    let gr_x = panelOptions.GravityX;
+    let gr_y = panelOptions.GravityY;
+    let gr_z = panelOptions.GravityZ;
+    engine.setGravity(gr_x, gr_y, gr_z);
 }
 
 
-// Function to create particles
-function createParticles(count) {
-    // Remove existing particles
-    particleMeshes.forEach(mesh => scene.remove(mesh));
-    particles = [];
-    particleMeshes = [];
-
-    let particleGeometry = new THREE.SphereGeometry(guiOptions.particleRadius, 8, 4);
-
-    // Create new particles
-    for (let i = 0; i < count; i++) {
-        const x = (Math.random() - 0.5) * boxWidth;
-        const y = 0.5 * boxHeight; //spawn on top of the box
-        const z = (Math.random() - 0.5) * boxDepth;
-
-        const particle = new Particle(x, y, z, boxWidth, boxHeight, boxDepth);
-        particles.push(particle);
-
-        const particleMesh = new THREE.Mesh(particleGeometry, particleMaterial);
-        particleMesh.position.copy(particle.position);
-        particle.mesh = particleMesh;
-        scene.add(particleMesh);
-        particleMeshes.push(particleMesh);
-    }
-}
-
-function addGUI(){
-    gui.add(guiOptions, 'particleCount', 0, 4000).step(1).onChange(value => {
-        createParticles(value);
+function setGuiPanel(){
+    gui.add(panelOptions, 'ParticleCount', 0, 10000).step(1).onChange(value => {
+        updateParticleCount(panelOptions.ParticleCount);
     });
     
-    gui.add(guiOptions, 'particleRadius', 0.004, 0.016).step(0.001).onChange(value => {
-        guiOptions.particleRadius = value;
-        createParticles(guiOptions.particleCount);
+    gui.add(panelOptions, 'ParticleRadius', 0.001, 0.020).step(0.001).onChange(value => {
+        panelOptions.particleRadius = value;
+        updateParticleCount(panelOptions.ParticleCount);
     });
+    gui.add(panelOptions, 'Mass', 1, 1.10).step(0.01).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'GasConstant', 1, 1000).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'RestDensity', 0, 5).step(0.5).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'Viscosity', 0, 11).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'SmoothingLength', 1, 1.150).step(0.001).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'GravityX', -100, 100).step(1).onChange(updateGravity);
+    gui.add(panelOptions, 'GravityY', -100, 100).step(1).onChange(updateGravity);
+    gui.add(panelOptions, 'GravityZ', -100, 100).step(1).onChange(updateGravity);
+
+    gui.add(panelOptions, 'startSim').name('Start Simulation');
 }
 
-function handleMouseDown(event) {
+function getMousePosition(event, element){
+    var boundingRect = element.getBoundingClientRect();
+    return {
+        x: event.clientX - boundingRect.left,
+        y: event.clientY - boundingRect.top
+    };
+}
+
+function mouseDownHandler(event) {
     isRotating = true;
     previousMousePosition = { x: event.clientX, y: event.clientY };
 }
 
-function handleResize(event) {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+//to force velocity
+function mapMouseToWorld(x, y, canvas, camera) {
+    // get the normalized device coordinates (NDC) of the mouse
+    let ndcX = (x / canvas.clientWidth) * 2 - 1;
+    let ndcY = - (y / canvas.clientHeight) * 2 + 1;  // "-"" sign is due to the fact that canvas y-coordinate increases downward while 
+    //the NDC y-coordinate increases upward, so the conversion needs to invert the direction
+    
+    // Create a ray from the camera through the mouse position in NDC
+    let raycaster = new THREE.Raycaster();
+    let mouseVector = new THREE.Vector2(ndcX, ndcY);
+    raycaster.setFromCamera(mouseVector, camera);
+
+    const intersects = raycaster.intersectObjects( scene.children );
+    if(intersects.length == 0) return null;
+    else return intersects;
 }
 
-function handleMouseMove(event) {
+
+
+function mouseMoveHandler(event) {
     if (isRotating) {
         let deltaMove = { x: event.clientX - previousMousePosition.x, y: event.clientY - previousMousePosition.y };
-
-        // Rotate camera around the cube
+        // rotate camera around the cube
         const rotationSpeed = 0.005;
         const spherical = new THREE.Spherical();
-
         spherical.setFromVector3(camera.position);
-
         //adjust spherical coordinates, where theta is the horizontal angle and phi is the vertical angle
         spherical.theta -= deltaMove.x * rotationSpeed;
         spherical.phi -= deltaMove.y * rotationSpeed;
-
         spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, spherical.phi));
-
         //reconvert into cartesian coordinates
         camera.position.setFromSpherical(spherical);
-
         //ensure camera always looks at the center of the cube
         camera.lookAt(cube.position);
-
         previousMousePosition = { x: event.clientX, y: event.clientY };
+        renderer.render(scene, camera);
+    }
+
+    let mousePos = getMousePosition(event, renderer.domElement);
+    let int_Objects = mapMouseToWorld(mousePos.x, mousePos.y, renderer.domElement, camera);
+    //console.log("[FORCE VELOCITY] intersected objects ", int_Objects);
+    if(int_Objects != null) {
+        engine.forceVelocity(int_Objects, event.movementX, event.movementY);
     }
 }
 
-function handleMouseWheel(event) {
-    let delta = event.deltaY * 0.001;
-    camera.position.z += delta;
-}
 
-function handleMouseUp(event) {
+function mouseWheelHandler(event) {
+    let zoomFactor = 1.05; // Adjust this factor to control the zoom speed
+    if (event.deltaY < 0) {
+       camera.fov /= zoomFactor; // Zoom in
+    } else {
+        camera.fov *= zoomFactor; // Zoom out
+    }
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+}
+    
+  
+
+function mouseUpHandler(event) {
     isRotating = false;
 }
 
 function addListeners(){
     //mouse event listeners
-    renderer.domElement.addEventListener('mousedown', handleMouseDown, false);
-    renderer.domElement.addEventListener('mousemove', handleMouseMove, false);
-    renderer.domElement.addEventListener('mouseup', handleMouseUp, false);
-    renderer.domElement.addEventListener('wheel', handleMouseWheel, false);
-    window.addEventListener('resize', handleResize);
+    renderer.domElement.addEventListener('mousedown', mouseDownHandler, false);
+    renderer.domElement.addEventListener('mousemove', mouseMoveHandler, false);
+    renderer.domElement.addEventListener('mouseup', mouseUpHandler, false);
+    renderer.domElement.addEventListener('wheel', mouseWheelHandler, false);
+    //window.addEventListener('resize', handleResize);
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    engine.doPhysics();
-    particleMeshes.forEach((mesh, index) => {
-        mesh.position.copy(particles[index].position);
-    });
+let clock = 0;
 
-    renderer.render(scene, camera);
+function startSimulation() {
+    requestAnimationFrame(startSimulation);
+    //if(clock < 7){
+        engine.simulationStep();
+        for (var i = 0; i < particleMeshes.length; i++){
+            //console.log("[ANIMATE] particleMeshes before update is ", particleMeshes);
+            engine.updateMeshPosition(i, particleMeshes[i].position);
+            //console.log("[ANIMATE] particleMeshes after update is ", particleMeshes);
+        }
+        renderer.render(scene, camera);
+    //}
+    //clock++
+
 }
+init();
