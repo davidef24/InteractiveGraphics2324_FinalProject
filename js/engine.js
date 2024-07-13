@@ -3,13 +3,9 @@ import Particle from './particles.js';
 import * as THREE from './three.module.js'
 
 let h = 1;     // smoothing length
-let h2 = Math.pow(h, 2);
-let h5 = Math.pow(h, 5);
-let h6 = Math.pow(h, 6);
-let h9 = Math.pow(h, 9);
-let Wpoly6_coeff = 315.0 / (64 * Math.PI * h9);
-let Wspiky_grad_coeff = -45.0 / (Math.PI * h6);
-let Wvisc_lapl_coeff = 45.0 / (Math.PI * h5);
+const Wpoly6_coeff = (h) => 315.0 / (64 * Math.PI * Math.pow(h, 9));
+const Wspiky_grad_coeff = (h) => -45.0 / (Math.PI * Math.pow(h, 6));
+const Wvisc_lapl_coeff = (h) => 45.0 / (Math.PI * Math.pow(h, 5));
 let m = 1.0;	    // Particle mass
 let k = 120;				// Gas constant
 let rho0 = 0;			// Rest density
@@ -31,21 +27,21 @@ class Engine{
 
     //density
     kernel_wpoly6(r2) {
-        let temp = h2 - r2;
-        return Wpoly6_coeff * temp * temp * temp;
+        let temp = Math.pow(h, 2) - r2;
+        return Wpoly6_coeff(h) * temp * temp * temp;
     }
     
     //pressure
     // assumption: r is less than h
     kernel_wspiky_grad2(r) {
         let temp = h - r;
-        return Wspiky_grad_coeff * temp * temp / r;
+        return Wspiky_grad_coeff(h) * temp * temp / r;
     }
     
     //viscosity
     // assumption: r is less than h
     kernel_wvisc_lapl(r) {
-        return Wvisc_lapl_coeff * (1 - r / h);
+        return Wvisc_lapl_coeff(h) * (1 - r / h);
     }
     
     dist2(p1, p2) {
@@ -64,15 +60,15 @@ class Engine{
         }
     }
 
-    setFluidProperties(mass, gasConstant, restDensity, viscosity, h2) {
-        h = h2;
+    setFluidProperties(mass, gasConstant, restDensity, viscosity, smoothingLength) {
+        h = smoothingLength;
         m = mass;
         k = gasConstant;
         rho0 = restDensity;
         mu = viscosity;
     }
 
-    setGravity(gr_x, gr_y, gr_z) {
+    setGravity(gr_x, gr_y, gr_z){
         gx = gr_x;
         gy = gr_y;
         gz = gr_z;
@@ -168,7 +164,7 @@ class Engine{
       
       getDensityContribution(particle1, particle2) {
         const r2 = this.dist2(particle1, particle2);
-        if (r2 < h2) {
+        if (r2 < Math.pow(h, 2)) {
           return m * this.kernel_wpoly6(r2);
         } else {
           return 0;
@@ -180,7 +176,7 @@ class Engine{
       updateParticleForces(p1, p2) {
         let r2 = this.dist2(p1, p2);
         
-        if (r2 < h2) {
+        if (r2 < Math.pow(h, 2)) {
             let r = Math.sqrt(r2) + 1e-6; // Add a tiny bit to avoid divide by zero
     
             // Compute the common term for pressure force
@@ -345,8 +341,10 @@ class Engine{
             }
     
             this.grid.insertParticleIntoCell(p);
+
+            let kW = this.kernel_wpoly6(0);
     
-            p.initForceDensity();
+            p.initForceDensity(kW);
         }
     }
 

@@ -23,14 +23,16 @@ class Particle {
         this.m = mass;    
     }
 
+    
+
     Wpoly6(r2) {
         let temp = h2 - r2;
         return Wpoly6_coeff * temp * temp * temp;
     }
 
-    initForceDensity() {
+    initForceDensity(kernelWeight) {
         ({ Fx: this.Fx, Fy: this.Fy, Fz: this.Fz } = { Fx: 0, Fy: 0, Fz: 0 });
-        this.rho = this.m * this.Wpoly6(0);
+        this.rho = this.m * kernelWeight;
     }
 }
 

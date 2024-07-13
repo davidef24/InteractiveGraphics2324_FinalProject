@@ -149,7 +149,7 @@ function setGuiPanel(){
     gui.add(panelOptions, 'GasConstant', 1, 1000).onChange(updateFluidProperties);
     gui.add(panelOptions, 'RestDensity', 0, 5).step(0.5).onChange(updateFluidProperties);
     gui.add(panelOptions, 'Viscosity', 0, 11).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'SmoothingLength', 1, 1.150).step(0.001).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'SmoothingLength', 1, 2.5).step(0.001).onChange(updateFluidProperties);
     gui.add(panelOptions, 'GravityX', -100, 100).step(1).onChange(updateGravity);
     gui.add(panelOptions, 'GravityY', -100, 100).step(1).onChange(updateGravity);
     gui.add(panelOptions, 'GravityZ', -100, 100).step(1).onChange(updateGravity);
