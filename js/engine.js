@@ -27,7 +27,7 @@ class Engine{
 
     //density
     kernel_wpoly6(r2) {
-        let temp = Math.pow(h, 2) - r2;
+        let temp = Math.pow(h, 2) - Math.pow(r2, 2);
         return Wpoly6_coeff(h) * temp * temp * temp;
     }
     
@@ -163,9 +163,9 @@ class Engine{
       }
       
       getDensityContribution(particle1, particle2) {
-        const r2 = this.dist2(particle1, particle2);
-        if (r2 < Math.pow(h, 2)) {
-          return m * this.kernel_wpoly6(r2);
+        const r = this.dist2(particle1, particle2);
+        if (r < Math.pow(h, 2)) {
+          return m * this.kernel_wpoly6(r);
         } else {
           return 0;
         }
