@@ -134,6 +134,7 @@ class Engine{
         this.forceVy = 0;
         this.forceVz = 0;
     }
+
     
     computeDensity() {
         // Loop through all cells in the grid
@@ -157,7 +158,7 @@ class Engine{
       
             // Update particle density and pressure
             particle1.rho += densityContribution;
-            particle1.P = Math.max(k * (particle1.rho - rho0), 0);
+            particle1.pressure = Math.max(k * (particle1.rho - rho0), 0);
           }
         }
       }
@@ -180,7 +181,7 @@ class Engine{
             let r = Math.sqrt(r2) + 1e-6; // Add a tiny bit to avoid divide by zero
     
             // Compute the common term for pressure force
-            let avgPressure = (p1.P + p2.P) / 2;
+            let avgPressure = (p1.pressure + p2.pressure) / 2;
             let pressureFactor = m * avgPressure / p2.rho;
             let pressureGradient = this.kernel_wspiky_grad2(r);
             let temp1 = pressureFactor * pressureGradient;
@@ -217,7 +218,7 @@ class Engine{
     
     addWallForces(p1) {
         // Define the kernel weight function
-        const kernelWeight = (r) => m * p1.P / p1.rho * this.kernel_wspiky_grad2(r) * r;
+        const kernelWeight = (r) => m * p1.pressure / p1.rho * this.kernel_wspiky_grad2(r) * r;
     
         // Check and apply forces for the x boundaries
         if (p1.x < this.xmin + h) {
@@ -371,18 +372,18 @@ class Engine{
                     let p = this.forceVelocityCell.particles[i];
                     p.Vx = vx * velocityMultiplier;
                     p.Vy = vy * velocityMultiplier;
-                    //p.Fx = 0;
-                    //p.Fy = 0;
-                    //p.Fz = 0;
+                    p.Fx = 0;
+                    p.Fy = 0;
+                    p.Fz = 0;
                     //force velocity even to all neighbours
                     for (let neighbor of this.forceVelocityCell.neighbors) {
                         for (let j = 0; j < neighbor.numParticles; j++) {
                             const p2 = neighbor.particles[j];
                             p2.Vx = vx * velocityMultiplier;
                             p2.Vy = vy * velocityMultiplier;
-                            //p2.Fx = 0;
-                            //p2.Fy = 0;
-                            //p2.Fz = 0;
+                            p2.Fx = 0;
+                            p2.Fy = 0;
+                            p2.Fz = 0;
                         }
                     }
 

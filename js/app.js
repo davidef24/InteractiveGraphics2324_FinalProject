@@ -115,7 +115,7 @@ function initScene(){
     camera.position.z = 1;
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0xFAEBD7, 1);  // Set background color to antiquewhite
-    document.body.appendChild(renderer.domElement);
+    document.body.appendChild(renderer.domElement); //renderer creates a canvas element that is used to draw and render the scene
     scene.add(cube);
 }
 
@@ -160,6 +160,8 @@ function setGuiPanel(){
 function getMousePosition(event, element){
     var boundingRect = element.getBoundingClientRect();
     return {
+        //event.clientX provides the horizontal coordinate of the mouse cursor relative to the viewport.
+        //boundingRect.left is the distance from the left edge of the viewport to the left edge of the element.
         x: event.clientX - boundingRect.left,
         y: event.clientY - boundingRect.top
     };
@@ -172,7 +174,7 @@ function mouseDownHandler(event) {
 
 //to force velocity
 function mapMouseToWorld(x, y, canvas, camera) {
-    // get the normalized device coordinates (NDC) of the mouse
+    // get the normalized device coordinates (NDC) of the mouse, required for setFromCamera API of raycaster
     let ndcX = (x / canvas.clientWidth) * 2 - 1;
     let ndcY = - (y / canvas.clientHeight) * 2 + 1;  // "-"" sign is due to the fact that canvas y-coordinate increases downward while 
     //the NDC y-coordinate increases upward, so the conversion needs to invert the direction
@@ -192,13 +194,14 @@ function mapMouseToWorld(x, y, canvas, camera) {
 function mouseMoveHandler(event) {
     if (isRotating) {
         let deltaMove = { x: event.clientX - previousMousePosition.x, y: event.clientY - previousMousePosition.y };
+        console.log(deltaMove);
         // rotate camera around the cube
         const rotationSpeed = 0.005;
-        const spherical = new THREE.Spherical();
+        const spherical = new THREE.Spherical();  // a point spherical coordinates
         spherical.setFromVector3(camera.position);
         //adjust spherical coordinates, where theta is the horizontal angle and phi is the vertical angle
-        spherical.theta -= deltaMove.x * rotationSpeed;
-        spherical.phi -= deltaMove.y * rotationSpeed;
+        spherical.theta -= deltaMove.x * rotationSpeed;  //azimuthal angle
+        spherical.phi -= deltaMove.y * rotationSpeed;  //polar angle
         spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, spherical.phi));
         //reconvert into cartesian coordinates
         camera.position.setFromSpherical(spherical);
@@ -240,7 +243,6 @@ function addListeners(){
     renderer.domElement.addEventListener('mousemove', mouseMoveHandler, false);
     renderer.domElement.addEventListener('mouseup', mouseUpHandler, false);
     renderer.domElement.addEventListener('wheel', mouseWheelHandler, false);
-    //window.addEventListener('resize', handleResize);
 }
 
 let clock = 0;

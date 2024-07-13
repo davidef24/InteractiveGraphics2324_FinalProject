@@ -18,8 +18,8 @@ class Particle {
         this.Fx = 0;
         this.Fy = 0;
         this.Fz = 0;
-        this.rho = 0; //density
-        this.P = 0; //pressure    
+        this.rho = 0; 
+        this.pressure = 0;     
         this.m = mass;    
     }
 
