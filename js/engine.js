@@ -80,24 +80,24 @@ class Engine{
     }
 
     updateParticleCount(n, boxDimensions, particleMeshes, particleMass) {
-        //console.log("[ENGINE] particleMeshes received is ", particleMeshes);
-        let i0 = 0;
-        if (this.particles == undefined) {
-            this.particles = new Array(n);
-        }
-        else {
-            if (n < this.particles.length) {
-                this.particles.length = n;
+        // Ensure this.particles array is initialized
+        this.particles = this.particles || [];
+    
+        // Trim or extend the particles array to the desired length n
+        if (n < this.particles.length) {
+            this.particles.length = n;  // Trim the array if necessary
+        } else {
+            // Add new particles if needed
+            for (let i = this.particles.length; i < n; i++) {
+                this.particles.push(new Particle(particleMeshes[i], domainScale, particleMass));
+                this.particles[i].rho = particleMass * this.kernel_wpoly6(0);
             }
-            i0 = this.particles.length;
         }
-        for (let i = i0; i < n; i++) {
-            this.particles[i] = new Particle(particleMeshes[i], domainScale, particleMass);
-            this.particles[i].rho = m * this.kernel_wpoly6(0);
-            //console.log("[ENGINE] I-TH PARTICLE IS",i, this.particles[i]);
-        }
-        //console.log("[ENGINE] ALL PARTICLES ARE",this.particles);
+    
+        // Optionally log the updated particles for debugging
+        console.log("[ENGINE] ALL PARTICLES ARE", this.particles);
     }
+    
     
 
     constructor(width, height, depth, left, right, bottom, top, front, back){
@@ -128,7 +128,6 @@ class Engine{
 
         this.particles = []
         
-        this.lastTime = performance.now();
         this.forceVelocityCell = null;  // cell where velocity should be forced when mouse is over it
         this.forceVx = 0;
         this.forceVy = 0;

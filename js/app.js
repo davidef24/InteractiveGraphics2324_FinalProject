@@ -189,8 +189,6 @@ function mapMouseToWorld(x, y, canvas, camera) {
     else return intersects;
 }
 
-
-
 function mouseMoveHandler(event) {
     if (isRotating) {
         let deltaMove = { x: event.clientX - previousMousePosition.x, y: event.clientY - previousMousePosition.y };
@@ -200,9 +198,8 @@ function mouseMoveHandler(event) {
         const spherical = new THREE.Spherical();  // a point spherical coordinates
         spherical.setFromVector3(camera.position);
         //adjust spherical coordinates, where theta is the horizontal angle and phi is the vertical angle
-        spherical.theta -= deltaMove.x * rotationSpeed;  //azimuthal angle
-        spherical.phi -= deltaMove.y * rotationSpeed;  //polar angle
-        spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, spherical.phi));
+        spherical.theta -= deltaMove.x * rotationSpeed;  //azimuthal angle  (horizontal rotation)
+        spherical.phi -= deltaMove.y * rotationSpeed;  //polar angle (vertical rotation)
         //reconvert into cartesian coordinates
         camera.position.setFromSpherical(spherical);
         //ensure camera always looks at the center of the cube
