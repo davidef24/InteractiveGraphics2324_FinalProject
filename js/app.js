@@ -10,8 +10,8 @@ const boxDepth = 0.35;
 const boxHeight = 1;
 // GUI setup
 const gui = new GUI();
-const initial_particles_n = 1000;
-let initial_particle_radius = 0.005;
+const initial_particles_n = 2000;
+let initial_particle_radius = 0.007;
 let initial_mass = 1.0;	    
 let k = 120; //gas constant		
 let rho0 = 0; //rest density
@@ -43,8 +43,6 @@ let isRotating = false;
 let previousMousePosition = { x: 0, y: 0 };
 
 
-
-
 const halfWidth = boxWidth/2;
 const halfHeight = boxHeight/2;
 const halfDepth = boxDepth/2;
@@ -67,7 +65,7 @@ const particleMaterial = new THREE.MeshPhongMaterial({ color: 0x1E90FF, transpar
 const cube = new THREE.Mesh(geometry, cubeMaterial);
 
 // Lights
-const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft white light
+const ambientLight = new THREE.AmbientLight(0x404040, 2.0); // soft white light
 scene.add(ambientLight);
 
 const pointLight = new THREE.PointLight(0xffffff, 1, 100);
@@ -88,7 +86,7 @@ function updateParticleCount(n) {
     for (var i = 0; i < n; i++) {
         var m = new THREE.Mesh(particleGeometry, particleMaterial);
         m.position.x = (Math.random() - 0.5) * boxWidth;
-        m.position.y = (Math.random() * 0.5) * boxHeight; 
+        m.position.y = (Math.random() * 0.5) * boxHeight; //put particles from half to top
         m.position.z = (Math.random() - 0.5) * boxDepth;
         //console.log(" [SET NUM PARTICLES APP] Particle MESH after definition ", m);
         particleMeshes[i] = m;
@@ -96,7 +94,7 @@ function updateParticleCount(n) {
         scene.add(m);
     }
     //console.log("[SET NUM PARTICLES APP] Particle meshes after definition ", particleMeshes);
-    engine.updateParticleCount(n, [boxWidth, boxHeight, boxDepth], particleMeshes, panelOptions.Mass);
+    engine.updateParticleCount(n, particleMeshes, panelOptions.Mass);
     renderer.render(scene, camera);
 }
 
@@ -145,11 +143,11 @@ function setGuiPanel(){
         panelOptions.particleRadius = value;
         updateParticleCount(panelOptions.ParticleCount);
     });
-    gui.add(panelOptions, 'Mass', 1, 1.10).step(0.01).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'Mass', 1, 3.0).step(0.01).onChange(updateFluidProperties);
     gui.add(panelOptions, 'GasConstant', 1, 1000).onChange(updateFluidProperties);
     gui.add(panelOptions, 'RestDensity', 0, 5).step(0.5).onChange(updateFluidProperties);
     gui.add(panelOptions, 'Viscosity', 0, 11).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'SmoothingLength', 1, 1.2).step(0.001).onChange(updateFluidProperties);
+    gui.add(panelOptions, 'SmoothingLength', 1, 1.25).step(0.001).onChange(updateFluidProperties);
     gui.add(panelOptions, 'GravityX', -100, 100).step(1).onChange(updateGravity);
     gui.add(panelOptions, 'GravityY', -100, 100).step(1).onChange(updateGravity);
     gui.add(panelOptions, 'GravityZ', -100, 100).step(1).onChange(updateGravity);

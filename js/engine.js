@@ -7,15 +7,16 @@ const Wpoly6_coeff = (h) => 315.0 / (64 * Math.PI * Math.pow(h, 9));
 const Wspiky_grad_coeff = (h) => -45.0 / (Math.PI * Math.pow(h, 6));
 const Wvisc_lapl_coeff = (h) => 45.0 / (Math.PI * Math.pow(h, 5));
 let m = 1.0;	    // Particle mass
-let k = 120;				// Gas constant
+let gasConstant = 120;				// Gas constant
 let rho0 = 0;			// Rest density
 let mu = 10;				// Viscosity
 let gx = 0;				// Gravity-x
 let gy = 0;			
 let gz = 0;
+let timestep= 1.0/60.0;
 //let clock= 0;
 
-let velocityMultiplier = 1.5;
+let velocityMultiplier = 0.9;
 
 let numGridCellsX;
 let numGridCellsY;
@@ -26,8 +27,8 @@ const domainScale = 0.04;
 class Engine{
 
     //density
-    kernel_wpoly6(r2) {
-        let temp = Math.pow(h, 2) - Math.pow(r2, 2);
+    kernel_wpoly6(r) {
+        let temp = Math.pow(h, 2) - Math.pow(r, 2);
         return Wpoly6_coeff(h) * temp * temp * temp;
     }
     
@@ -60,10 +61,10 @@ class Engine{
         }
     }
 
-    setFluidProperties(mass, gasConstant, restDensity, viscosity, smoothingLength) {
+    setFluidProperties(mass, k, restDensity, viscosity, smoothingLength) {
         h = smoothingLength;
         m = mass;
-        k = gasConstant;
+        gasConstant = k;
         rho0 = restDensity;
         mu = viscosity;
     }
@@ -79,7 +80,7 @@ class Engine{
         this.grid.clearParticleReferences();
     }
 
-    updateParticleCount(n, boxDimensions, particleMeshes, particleMass) {
+    updateParticleCount(n, particleMeshes, particleMass) {
         // Ensure this.particles array is initialized
         this.particles = this.particles || [];
     
@@ -94,8 +95,7 @@ class Engine{
             }
         }
     
-        // Optionally log the updated particles for debugging
-        console.log("[ENGINE] ALL PARTICLES ARE", this.particles);
+        //console.log("[ENGINE] ALL PARTICLES ARE", this.particles);
     }
     
     
@@ -129,10 +129,16 @@ class Engine{
         this.particles = []
         
         this.forceVelocityCell = null;  // cell where velocity should be forced when mouse is over it
-        this.forceVx = 0;
-        this.forceVy = 0;
-        this.forceVz = 0;
     }
+
+    getDensityContribution(particle1, particle2) {
+        const r = this.dist2(particle1, particle2);
+        if (r < Math.pow(h, 2)) {
+          return m * this.kernel_wpoly6(r);
+        } else {
+          return 0;
+        }
+      }
 
     
     computeDensity() {
@@ -144,6 +150,7 @@ class Engine{
       
             // Calculate density contribution from neighboring particles (within cell and neighbors)
             let densityContribution = 0;
+            //start from i+1 such that each pair is considered only once
             for (let j = i + 1; j < cell.numParticles; j++) {
               const particle2 = cell.particles[j];
               densityContribution += this.getDensityContribution(particle1, particle2);
@@ -157,67 +164,68 @@ class Engine{
       
             // Update particle density and pressure
             particle1.rho += densityContribution;
-            particle1.pressure = Math.max(k * (particle1.rho - rho0), 0);
+            particle1.pressure = Math.max(gasConstant * (particle1.rho - rho0), 0);
           }
         }
       }
+       
+      updateParticleForces(p1, p2) {
+        let r2 = this.dist2(p1, p2);
       
-      getDensityContribution(particle1, particle2) {
-        const r = this.dist2(particle1, particle2);
-        if (r < Math.pow(h, 2)) {
-          return m * this.kernel_wpoly6(r);
-        } else {
-          return 0;
+        if (r2 < Math.pow(h, 2)) {
+          let r = Math.sqrt(r2) + 1e-6; // Add a tiny bit to avoid divide by zero
+      
+          // Compute common terms
+          let avgPressure = (p1.pressure + p2.pressure) / 2;
+          let pressureFactor = m * avgPressure / p2.rho;
+          let viscosityFactor = mu * m * this.kernel_wvisc_lapl(r) / p2.rho;
+      
+          // Compute forces
+          let pressureForce = this.computePressureForce(p1, p2, r, pressureFactor);
+          let viscosityForce = this.computeViscosityForce(p1, p2, viscosityFactor);
+      
+          // Total forces
+          let fx_total = pressureForce.x + viscosityForce.x;
+          let fy_total = pressureForce.y + viscosityForce.y;
+          let fz_total = pressureForce.z + viscosityForce.z;
+      
+          // Apply forces to particles 
+          // According to Newton's Third Law, when two particles exert forces on each other, the forces are equal in magnitude but opposite in direction. Hence, if particle 
+          // p1 exerts a force on particle p2, particle p2 exerts an equal and opposite force on particle p1
+          p1.Fx += fx_total;
+          p1.Fy += fy_total;
+          p1.Fz += fz_total;
+      
+          p2.Fx -= fx_total;
+          p2.Fy -= fy_total;
+          p2.Fz -= fz_total;
         }
       }
       
-    
-    
-      updateParticleForces(p1, p2) {
-        let r2 = this.dist2(p1, p2);
-        
-        if (r2 < Math.pow(h, 2)) {
-            let r = Math.sqrt(r2) + 1e-6; // Add a tiny bit to avoid divide by zero
-    
-            // Compute the common term for pressure force
-            let avgPressure = (p1.pressure + p2.pressure) / 2;
-            let pressureFactor = m * avgPressure / p2.rho;
-            let pressureGradient = this.kernel_wspiky_grad2(r);
-            let temp1 = pressureFactor * pressureGradient;
-    
-            // Compute pressure force components
-            let fx_pressure = temp1 * (p2.x - p1.x);
-            let fy_pressure = temp1 * (p2.y - p1.y);
-            let fz_pressure = temp1 * (p2.z - p1.z);
-    
-            // Compute the common term for viscosity force
-            let viscosityFactor = mu * m * this.kernel_wvisc_lapl(r) / p2.rho;
-    
-            // Compute viscosity force components
-            let fx_viscosity = viscosityFactor * (p2.Vx - p1.Vx);
-            let fy_viscosity = viscosityFactor * (p2.Vy - p1.Vy);
-            let fz_viscosity = viscosityFactor * (p2.Vz - p1.Vz);
-    
-            // Total forces
-            let fx_total = fx_pressure + fx_viscosity;
-            let fy_total = fy_pressure + fy_viscosity;
-            let fz_total = fz_pressure + fz_viscosity;
-    
-            // Apply forces to particles
-            p1.Fx += fx_total;
-            p1.Fy += fy_total;
-            p1.Fz += fz_total;
-    
-            p2.Fx -= fx_total;
-            p2.Fy -= fy_total;
-            p2.Fz -= fz_total;
-        }
-    }
-    
+      computePressureForce(p1, p2, r, pressureFactor) {
+        let pressureGradient = this.kernel_wspiky_grad2(r);
+        let temp1 = pressureFactor * pressureGradient;
+      
+        return {
+          x: temp1 * (p2.x - p1.x),
+          y: temp1 * (p2.y - p1.y),
+          z: temp1 * (p2.z - p1.z)
+        };
+      }
+      
+      computeViscosityForce(p1, p2, viscosityFactor) {
+        return {
+          x: viscosityFactor * (p2.Vx - p1.Vx),
+          y: viscosityFactor * (p2.Vy - p1.Vy),
+          z: viscosityFactor * (p2.Vz - p1.Vz)
+        };
+      }
+         
     
     addWallForces(p1) {
         // Define the kernel weight function
         const kernelWeight = (r) => m * p1.pressure / p1.rho * this.kernel_wspiky_grad2(r) * r;
+        
     
         // Check and apply forces for the x boundaries
         if (p1.x < this.xmin + h) {
@@ -282,8 +290,6 @@ class Engine{
         if (index !== -1) {
             cell_particles.splice(index, 1);  // Remove the particle at the found index
             cell.numParticles--;  // Decrement the particle count
-        } else {
-            console.log("Particle not found in the specified cell.");
         }
     }
     
@@ -315,7 +321,7 @@ class Engine{
 
             //console.log("[UPDATE POSITION] changed position of particle to ", p.x, p.y, p.z);
 
-    
+            //check domain boundaries
             if (p.x < this.xmin) {
                 p.x = this.xmin + 1e-6;
                 p.Vx *= -0.8;
@@ -344,6 +350,8 @@ class Engine{
 
             let kW = this.kernel_wpoly6(0);
     
+            //forces and denisity need to be recalculated at each time step
+            //since they depend on the current spatial distribution  and velocities
             p.initForceDensity(kW);
         }
     }
@@ -352,21 +360,16 @@ class Engine{
     simulationStep() {
         this.computeDensity();
         this.computeForces();
-        this.updatePosition(1.0/60.0);
+        this.updatePosition(timestep);
         //clock++;
     }
 
-    
+    // mouse over particles forces velocity based on mouse movement
     forceVelocity(int_Objects, vx, vy) {
-        let sum = 0;
         for (let obj of int_Objects) {
             if (obj.object.geometry instanceof THREE.SphereGeometry) {
                 let mesh = obj.object;
                 this.forceVelocityCell = this.grid.getCellFromLocation2(mesh.position.x, mesh.position.y, mesh.position.z);
-                sum += this.forceVelocityCell.particles.length;
-                this.forceVx = vx;
-                this.forceVy = -vy;
-                this.forceVz = 0;  //just force velocity on x and y axes
                 for (let i = 0; i < this.forceVelocityCell.numParticles; i++) {
                     let p = this.forceVelocityCell.particles[i];
                     p.Vx = vx * velocityMultiplier;

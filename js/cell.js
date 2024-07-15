@@ -1,4 +1,4 @@
-const max_particles = 20;
+const max_particles = 1;
 class Cell {
     constructor() {
         this.particles = new Array(max_particles);

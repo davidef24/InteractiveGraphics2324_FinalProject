@@ -1,4 +1,4 @@
-let h = 1;     // smoothing length
+let h = 1.25;     // smoothing length
 let h2 = Math.pow(h, 2);
 let h9 = Math.pow(h, 9);
 let Wpoly6_coeff = 315.0 / (64 * Math.PI * h9);
