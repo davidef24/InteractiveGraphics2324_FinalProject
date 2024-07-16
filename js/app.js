@@ -10,30 +10,31 @@ const boxDepth = 0.35;
 const boxHeight = 1;
 // GUI setup
 const gui = new GUI();
-const initial_particles_n = 2000;
+let initial_particles_n = 2000;
 let initial_particle_radius = 0.007;
 let initial_mass = 1.0;	    
 let k = 120; //gas constant		
 let rho0 = 0; //rest density
-let mu = 3; //viscosity		
+let mu = 5; //viscosity		
 let gx = 0;	//gravity		
-let gy = -10;			
+let gy = -9;			
 let gz = 0;
-let h = 1; //smoothing length
+let h = 1.01; //smoothing length
+let initial_timestep= 1.0/60.0;
 //particles
 let particleMeshes = [];
 const panelOptions = {
-    ShowWireFrame: true,
-    ParticleCount: initial_particles_n,
-    ParticleRadius: initial_particle_radius,
-    Mass: initial_mass,
-    RestDensity: rho0,
-    Viscosity: mu,
-    GasConstant: k,
-    SmoothingLength: h,
-    GravityX: gx,
-    GravityY: gy,
-    GravityZ: gz,
+    timestep: initial_timestep,
+    particleCount: initial_particles_n,
+    particleRadius: initial_particle_radius,
+    mass: initial_mass,
+    restDensity: rho0,
+    viscosity: mu,
+    gasConstant: k,
+    smoothingLength: h,
+    gravityX: gx,
+    gravityY: gy,
+    gravityZ: gz,
     startSim: function() {
         startSimulation();
     }
@@ -54,7 +55,7 @@ const renderer = new THREE.WebGLRenderer();
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-const cubeMaterial = new THREE.MeshBasicMaterial({
+const cubeMaterial = new THREE.MeshPhongMaterial({
     color: 0x000000,
     transparent: true,
     wireframe: true,
@@ -82,7 +83,7 @@ function updateParticleCount(n) {
     }
     particleMeshes = new Array(n);
 
-    let particleGeometry = new THREE.SphereGeometry(panelOptions.ParticleRadius, 16, 8);
+    let particleGeometry = new THREE.SphereGeometry(panelOptions.particleRadius, 16, 8);
     for (var i = 0; i < n; i++) {
         var m = new THREE.Mesh(particleGeometry, particleMaterial);
         m.position.x = (Math.random() - 0.5) * boxWidth;
@@ -94,17 +95,17 @@ function updateParticleCount(n) {
         scene.add(m);
     }
     //console.log("[SET NUM PARTICLES APP] Particle meshes after definition ", particleMeshes);
-    engine.updateParticleCount(n, particleMeshes, panelOptions.Mass);
+    engine.updateParticleCount(n, particleMeshes, panelOptions.mass);
     renderer.render(scene, camera);
 }
 
 
 function init(){
-    updateFluidProperties();
+    updateSimulationParameters();
     updateGravity();
     initScene();
     addListeners();
-    updateParticleCount(panelOptions.ParticleCount);
+    updateParticleCount(panelOptions.particleCount);
     setGuiPanel();
 }
 
@@ -117,40 +118,42 @@ function initScene(){
     scene.add(cube);
 }
 
-function updateFluidProperties() {
-    let h= panelOptions.SmoothingLength;
-    let mass = panelOptions.Mass;
-    let gasConstant = panelOptions.GasConstant;
-    let restDensity = panelOptions.RestDensity;
-    let viscosity = panelOptions.Viscosity;
-    engine.setFluidProperties(mass, gasConstant, restDensity, viscosity, h);
+function updateSimulationParameters() {
+    let h= panelOptions.smoothingLength;
+    let mass = panelOptions.mass;
+    let gasConstant = panelOptions.gasConstant;
+    let restDensity = panelOptions.restDensity;
+    let viscosity = panelOptions.viscosity;
+    let ts= panelOptions.timestep;
+    engine.setSimulationParameters(mass, gasConstant, restDensity, viscosity, h, ts);
 }
 
 function updateGravity() {
-    let gr_x = panelOptions.GravityX;
-    let gr_y = panelOptions.GravityY;
-    let gr_z = panelOptions.GravityZ;
+    let gr_x = panelOptions.gravityX;
+    let gr_y = panelOptions.gravityY;
+    let gr_z = panelOptions.gravityZ;
     engine.setGravity(gr_x, gr_y, gr_z);
 }
 
 
 function setGuiPanel(){
-    gui.add(panelOptions, 'ParticleCount', 0, 10000).step(1).onChange(value => {
-        updateParticleCount(panelOptions.ParticleCount);
+    gui.add(panelOptions, 'particleCount', 0, 10000).name('Particle radius').step(1).onChange(value => {
+        updateParticleCount(panelOptions.particleCount);
     });
     
-    gui.add(panelOptions, 'ParticleRadius', 0.001, 0.020).step(0.001).onChange(value => {
+    gui.add(panelOptions, 'particleRadius', 0.001, 0.020).name('Particle count').step(0.001).onChange(value => {
         panelOptions.particleRadius = value;
-        updateParticleCount(panelOptions.ParticleCount);
+        updateParticleCount(panelOptions.particleCount);
     });
-    gui.add(panelOptions, 'Mass', 1, 3.0).step(0.01).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'GasConstant', 1, 1000).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'RestDensity', 0, 5).step(0.5).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'Viscosity', 0, 11).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'SmoothingLength', 1, 1.25).step(0.001).onChange(updateFluidProperties);
-    gui.add(panelOptions, 'GravityX', -100, 100).step(1).onChange(updateGravity);
-    gui.add(panelOptions, 'GravityY', -100, 100).step(1).onChange(updateGravity);
-    gui.add(panelOptions, 'GravityZ', -100, 100).step(1).onChange(updateGravity);
+    gui.add(panelOptions, 'mass', 1, 3.0).name('Particle mass').step(0.01).onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'gasConstant', 1, 1000).name('Gas constant').onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'restDensity', 0, 5).step(0.1).name('Rest density').onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'viscosity', 0, 11).name('Viscosity').onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'smoothingLength', 1, 1.25).name('Smoothing length').step(0.001).onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'gravityX', -100, 100).step(1).name('Gravity X').onChange(updateGravity);
+    gui.add(panelOptions, 'gravityY', -100, 100).step(1).name('Gravity Y').onChange(updateGravity);
+    gui.add(panelOptions, 'gravityZ', -100, 100).step(1).name('Gravity Z').onChange(updateGravity);
+    gui.add(panelOptions, 'timestep', 0.01, 0.021).name('Simulation step').step(0.001).onChange(updateSimulationParameters);
 
     gui.add(panelOptions, 'startSim').name('Start Simulation');
 }
@@ -174,7 +177,7 @@ function mouseDownHandler(event) {
 function mapMouseToWorld(x, y, canvas, camera) {
     // get the normalized device coordinates (NDC) of the mouse, required for setFromCamera API of raycaster
     let ndcX = (x / canvas.clientWidth) * 2 - 1;
-    let ndcY = - (y / canvas.clientHeight) * 2 + 1;  // "-"" sign is due to the fact that canvas y-coordinate increases downward while 
+    let ndcY = - (y / canvas.clientHeight) * 2 + 1;  // "-" sign is due to the fact that canvas y-coordinate increases downward while 
     //the NDC y-coordinate increases upward, so the conversion needs to invert the direction
     
     // Create a ray from the camera through the mouse position in NDC

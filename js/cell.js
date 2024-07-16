@@ -1,7 +1,8 @@
-const max_particles = 1;
+
 class Cell {
     constructor() {
-        this.particles = new Array(max_particles);
+        this.max_particles = 100;
+        this.particles = new Array(this.max_particles);
         this.neighbors = [];
         this.numParticles = 0;
     }

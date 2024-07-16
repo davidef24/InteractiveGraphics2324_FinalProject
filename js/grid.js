@@ -1,8 +1,7 @@
 import Cell from './cell.js'
 
-const max_particles= 20;
 class Grid3D {
-    constructor(nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax, domainScale) {
+    constructor(nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax, domainScale, maxCellParticles) {
         this.nx = nx; // Number of cells in x direction
         this.ny = ny; // Number of cells in y direction
         this.nz = nz; // Number of cells in z direction
@@ -16,7 +15,7 @@ class Grid3D {
         this.cells = new Array(nx * ny * nz);
         this.domainScale = domainScale;
         for(let i=0; i< nx *  ny * nz; i++){
-            this.cells[i] = new Cell();
+            this.cells[i] = new Cell(maxCellParticles);
         }
         this.setNeighbors();
     }
@@ -111,12 +110,25 @@ class Grid3D {
     insertParticleIntoCell(particle) {
         const cellIndex = this.getCellIndexFromLocation(particle.x, particle.y, particle.z);
         const cell = this.cells[cellIndex];
-        if (cell !== undefined) {
+      
+        if (cell !== undefined && cell.numParticles < cell.max_particles) {
           cell.particles[cell.numParticles++] = particle;
         } else {
-          console.error("[grid] Undefined grid cell!"); // Consider throwing an error instead of logging
+          // Try to find a neighboring cell with available space
+          const nb = cell.neighbors
+          for (const n of nb) {
+            const neighborCell = n
+            if (neighborCell !== undefined && neighborCell.numParticles < cell.max_particles) {
+              neighborCell.particles[neighborCell.numParticles++] = particle;
+              return; // Particle successfully inserted into neighbor cell
+            }
+          }
+      
+          // If no neighbor cell has space, handle the particle rejection
+          console.error("[grid] No available space for particle!");
         }
-    }
+      }
+      
 
     // also clears references to particles
     clearParticleReferences() {

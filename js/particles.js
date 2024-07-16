@@ -1,16 +1,17 @@
-let h = 1.25;     // smoothing length
-let h2 = Math.pow(h, 2);
-let h9 = Math.pow(h, 9);
+let h = 1.01;     // smoothing length
+const h2 = (h) => Math.pow(h, 2);
+const h9 = (h) => Math.pow(h, 9);
 let Wpoly6_coeff = 315.0 / (64 * Math.PI * h9);
 
 let initialVelocityMultiplier= 10;
 
 class Particle {
-    constructor(particleMesh, domainScale, mass) {
+    constructor(particleMesh, domainScale, mass, smoothingLength) {
         //console.log("[PARTICLE] particleMesh received is ", particleMesh);
         this.x = particleMesh.position.x / domainScale;
         this.y = particleMesh.position.y /domainScale;
         this.z = particleMesh.position.z / domainScale;
+        this.h = smoothingLength;
         //console.log(`Location x = ${this.x} y = ${this.y} z = ${this.z}`);
         this.Vx = 0;
         this.Vy = 0;
@@ -26,7 +27,7 @@ class Particle {
     
 
     Wpoly6(r2) {
-        let temp = h2 - r2;
+        let temp = h2(this.h) - r2;
         return Wpoly6_coeff * temp * temp * temp;
     }
 

@@ -7,13 +7,13 @@ const wpoly6_coefficient = (h) => 315.0 / (64 * Math.PI * Math.pow(h, 9));
 const gradient_Wspiky_coefficient = (h) => -45.0 / (Math.PI * Math.pow(h, 6));
 const laplacian_wvisc_coefficient = (h) => 45.0 / (Math.PI * Math.pow(h, 6));
 let m = 1.0;	    // Particle mass
-let gasConstant = 120;				// Gas constant
+let gasConstant = 100;				// Gas constant
 let rho0 = 0;			// Rest density
-let mu = 10;				// Viscosity
+let mu = 3;				// Viscosity
 let gx = 0;				// Gravity-x
-let gy = 0;			
+let gy = -9;			
 let gz = 0;
-let timestep= 1.0/60.0;
+let timestep= 1.0/70.0;
 //let clock= 0;
 
 let velocityMultiplier = 0.9;
@@ -62,12 +62,16 @@ class Engine{
         }
     }
 
-    setFluidProperties(mass, k, restDensity, viscosity, smoothingLength) {
+    setSimulationParameters(mass, k, restDensity, viscosity, smoothingLength, ts) {
         h = smoothingLength;
+        for(let p of this.particles){
+            p.h = smoothingLength;
+        }
         m = mass;
         gasConstant = k;
         rho0 = restDensity;
         mu = viscosity;
+        timestep = ts;
     }
 
     setGravity(gr_x, gr_y, gr_z){
@@ -226,7 +230,6 @@ class Engine{
     addWallForces(p1) {
         // Define the kernel weight function
         const kernelWeight = (r) => m * p1.pressure / p1.rho * this.gradient_Wspiky(r) * r;
-        
     
         // Check and apply forces for the x boundaries
         if (p1.x < this.xmin + h) {
@@ -287,12 +290,25 @@ class Engine{
     removeParticleFromCell(cell, particle) {
         let cell_particles = cell.particles;
         let index = cell_particles.indexOf(particle);
-    
+      
         if (index !== -1) {
-            cell_particles.splice(index, 1);  // Remove the particle at the found index
-            cell.numParticles--;  // Decrement the particle count
+          // Remove from primary cell
+          cell_particles.splice(index, 1);
+          cell.numParticles--;
+      
+          // Remove from neighbor cells
+          const nb = cell.neighbors;
+          for (let n of nb) {
+            if (n !== undefined) {
+              index = n.particles.indexOf(particle);
+              if (index !== -1) {
+                neighborCell.particles.splice(index, 1);
+                neighborCell.numParticles--;
+              }
+            }
+          }
         }
-    }
+      }
     
     updatePosition(dT) {
         for (let p of this.particles) {
@@ -352,7 +368,7 @@ class Engine{
             let kW = this.wpoly6(0);
     
             //forces and denisity need to be recalculated at each time step
-            //since they depend on the current spatial distribution  and velocities
+            //since they depend on the current spatial distribution and velocities
             p.initForceDensity(kW);
         }
     }
