@@ -2,9 +2,9 @@ import Cell from './cell.js'
 
 class Grid3D {
     constructor(nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax, domainScale, maxCellParticles) {
-        this.nx = nx; // Number of cells in x direction
-        this.ny = ny; // Number of cells in y direction
-        this.nz = nz; // Number of cells in z direction
+        this.rows = nx; // Number of cells in x direction
+        this.columns = ny; // Number of cells in y direction
+        this.layers = nz; // Number of cells in z direction
         //console.log(`Grid is nx= ${nx} ny= ${ny} nz= ${nz}`);
         this.xmin = xmin; 
         this.xmax = xmax;
@@ -27,10 +27,10 @@ class Grid3D {
     }
 
     setNeighbors() {
-        for (let i = 0; i < this.nx; i++) {
-            for (let j = 0; j < this.ny; j++) {
-                for (let k = 0; k < this.nz; k++) {
-                    let idx = i + j * this.nx + k * this.nx * this.ny;
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.columns; j++) {
+                for (let k = 0; k < this.layers; k++) {
+                    let idx = i + j * this.rows + k * this.rows * this.columns;
                     let c = this.cells[idx];
                     this.setCellNeighbors(i, j, k, c);
                 }
@@ -50,11 +50,11 @@ class Grid3D {
                     let nk = k + dk;
                     
                     // Check if the neighbor is within bounds
-                    if (ni >= 0 && ni < this.nx &&
-                        nj >= 0 && nj < this.ny &&
-                        nk >= 0 && nk < this.nz) {
+                    if (ni >= 0 && ni < this.rows &&
+                        nj >= 0 && nj < this.columns &&
+                        nk >= 0 && nk < this.layers) {
                         
-                        let neighborIdx = ni + nj * this.nx + nk * this.nx * this.ny;
+                        let neighborIdx = ni + nj * this.rows + nk * this.rows * this.columns;
                         cell.neighbors.push(this.cells[neighborIdx]);
                     }
                 }
@@ -70,10 +70,10 @@ class Grid3D {
         let normY = (y - this.ymin) / (this.ymax - this.ymin);
         let normZ = (z - this.zmin) / (this.zmax - this.zmin);
         // Scale normalized coordinates to grid indices
-        let i = Math.floor(normX * this.nx);
-        let j = Math.floor(normY * this.ny);
-        let k = Math.floor(normZ * this.nz);
-        let index = i + j * this.nx + k * this.nx * this.ny;
+        let i = Math.floor(normX * this.rows);
+        let j = Math.floor(normY * this.columns);
+        let k = Math.floor(normZ * this.layers);
+        let index = i + j * this.rows + k * this.rows * this.columns;
         //console.log(`Location x = ${x} y = ${y} z = ${z}`);
         //console.log(`Cell xmin = ${this.xmin} ymin = ${this.ymin} zmin = ${this.zmin}`);
         //console.log(`Cell xmax = ${this.xmax} ymax = ${this.ymax} zmax = ${this.zmax}`);
@@ -94,10 +94,10 @@ class Grid3D {
         let normY = (y - (this.ymin * ds)) / ((this.ymax - this.ymin) * ds);
         let normZ = (z - (this.zmin * ds)) / ((this.zmax - this.zmin) * ds);
         // Scale normalized coordinates to grid indices
-        let i = Math.floor(normX * this.nx);
-        let j = Math.floor(normY * this.ny);
-        let k = Math.floor(normZ * this.nz);
-        let index = i + j * this.nx + k * this.nx * this.ny;
+        let i = Math.floor(normX * this.rows);
+        let j = Math.floor(normY * this.columns);
+        let k = Math.floor(normZ * this.layers);
+        let index = i + j * this.rows + k * this.rows * this.columns;
         //console.log(`Location x = ${x} y = ${y} z = ${z}`);
         //console.log(`Cell xmin = ${this.xmin} ymin = ${this.ymin} zmin = ${this.zmin}`);
         //console.log(`Cell xmax = ${this.xmax} ymax = ${this.ymax} zmax = ${this.zmax}`);
