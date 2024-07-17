@@ -5,8 +5,8 @@ import Engine from './engine.js'
 //window.addEventListener('load', init, false);
 
 // Constants
-const boxWidth = 0.80;
-const boxDepth = 0.35;
+const boxWidth = 0.90;
+const boxDepth = 0.55;
 const boxHeight = 1;
 // GUI setup
 const gui = new GUI();
@@ -137,11 +137,11 @@ function updateGravity() {
 
 
 function setGuiPanel(){
-    gui.add(panelOptions, 'particleCount', 0, 10000).name('Particle radius').step(1).onChange(value => {
+    gui.add(panelOptions, 'particleCount', 0, 10000).name('Particle count').step(1).onChange(value => {
         updateParticleCount(panelOptions.particleCount);
     });
     
-    gui.add(panelOptions, 'particleRadius', 0.001, 0.020).name('Particle count').step(0.001).onChange(value => {
+    gui.add(panelOptions, 'particleRadius', 0.001, 0.020).name('Particle radius').step(0.001).onChange(value => {
         panelOptions.particleRadius = value;
         updateParticleCount(panelOptions.particleCount);
     });
@@ -153,7 +153,7 @@ function setGuiPanel(){
     gui.add(panelOptions, 'gravityX', -100, 100).step(1).name('Gravity X').onChange(updateGravity);
     gui.add(panelOptions, 'gravityY', -100, 100).step(1).name('Gravity Y').onChange(updateGravity);
     gui.add(panelOptions, 'gravityZ', -100, 100).step(1).name('Gravity Z').onChange(updateGravity);
-    gui.add(panelOptions, 'timestep', 0.01, 0.021).name('Simulation step').step(0.001).onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'timestep', 0.01, 0.021).name('Time step').step(0.001).onChange(updateSimulationParameters);
 
     gui.add(panelOptions, 'startSim').name('Start Simulation');
 }

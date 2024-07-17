@@ -22,7 +22,7 @@ let numGridCellsX;
 let numGridCellsY;
 let numGridCellsZ; 
 
-const domainScale = 0.04;
+const domainScale = 0.035;
 
 class Engine{
 
@@ -32,16 +32,16 @@ class Engine{
         return wpoly6_coefficient(h) * temp * temp * temp;
     }
     
-    //pressure
-    // assumption: r is less than h
+    //used to compute forces related to pressure gradients
     gradient_Wspiky(r) {
+        if(r > h) return 0;
         let temp = h - r;
         return gradient_Wspiky_coefficient(h) * temp * temp / r;
     }
     
     //viscosity
-    // assumption: r is less than h
     laplacian_WVisc(r) {
+        if(r > h) return 0;
         return laplacian_wvisc_coefficient(h) * (h-r);
     }
     
@@ -228,36 +228,28 @@ class Engine{
          
     
     addWallForces(p1) {
-        // Define the kernel weight function
-        const kernelWeight = (r) => m * p1.pressure / p1.rho * this.gradient_Wspiky(r) * r;
+        const applyBoundaryForce = (coord, minBound, maxBound, forceComponent) => {
+            if (p1[coord] < minBound + h) {
+                let r = p1[coord] - minBound;
+                p1[forceComponent] -= kernelWeight(r);  //weight 
+            } else if (p1[coord] > maxBound - h) {
+                let r = maxBound - p1[coord];
+                p1[forceComponent] += kernelWeight(r);
+            }
+        };
     
-        // Check and apply forces for the x boundaries
-        if (p1.x < this.xmin + h) {
-            let r = p1.x - this.xmin;
-            p1.Fx -= kernelWeight(r);
-        } else if (p1.x > this.xmax - h) {
-            let r = this.xmax - p1.x;
-            p1.Fx += kernelWeight(r);
-        }
+        // Kernel weight function
+        const kernelWeight = (r) => {
+            if (r === 0) return 0;  // Avoid division by zero
+            return m * p1.pressure / p1.rho * this.gradient_Wspiky(r) * r;  //force is proportional to the distance, so particles closer to the boundary experience a stronger force compared to particles further away
+        };
     
-        // Check and apply forces for the y boundaries
-        if (p1.y < this.ymin + h) {
-            let r = p1.y - this.ymin;
-            p1.Fy -= kernelWeight(r);
-        } else if (p1.y > this.ymax - h) {
-            let r = this.ymax - p1.y;
-            p1.Fy += kernelWeight(r);
-        }
-    
-        // Check and apply forces for the z boundaries
-        if (p1.z < this.zmin + h) {
-            let r = p1.z - this.zmin;
-            p1.Fz -= kernelWeight(r);
-        } else if (p1.z > this.zmax - h) {
-            let r = this.zmax - p1.z;
-            p1.Fz += kernelWeight(r);
-        }
+        // Apply boundary forces
+        applyBoundaryForce('x', this.xmin, this.xmax, 'Fx');
+        applyBoundaryForce('y', this.ymin, this.ymax, 'Fy');
+        applyBoundaryForce('z', this.zmin, this.zmax, 'Fz');
     }
+    
     
     
     computeForces() {
@@ -308,7 +300,7 @@ class Engine{
             }
           }
         }
-      }
+    }
     
     updatePosition(dT) {
         for (let p of this.particles) {
@@ -340,26 +332,26 @@ class Engine{
 
             //check domain boundaries
             if (p.x < this.xmin) {
-                p.x = this.xmin + 1e-6;
+                p.x = this.xmin + 2e-10;
                 p.Vx *= -0.8;
             } else if (p.x > this.xmax) {
-                p.x = this.xmax - 1e-6;
+                p.x = this.xmax - 2e-10;
                 p.Vx *= -0.8;
             }
     
             if (p.y < this.ymin) {
-                p.y = this.ymin + 1e-6;
+                p.y = this.ymin + 2e-10;
                 p.Vy *= -0.8;
             } else if (p.y > this.ymax) {
-                p.y = this.ymax - 1e-6;
+                p.y = this.ymax - 2e-10;
                 p.Vy *= -0.8;
             }
     
             if (p.z < this.zmin) {
-                p.z = this.zmin + 1e-6;
+                p.z = this.zmin + 2e-10;
                 p.Vz *= -0.8;
             } else if (p.z > this.zmax) {
-                p.z = this.zmax - 1e-6;
+                p.z = this.zmax - 2e-10;
                 p.Vz *= -0.8;
             }
     
@@ -391,18 +383,14 @@ class Engine{
                     let p = this.forceVelocityCell.particles[i];
                     p.Vx = vx * velocityMultiplier;
                     p.Vy = vy * velocityMultiplier;
-                    p.Fx = 0;
-                    p.Fy = 0;
-                    p.Fz = 0;
+
                     //force velocity even to all neighbours
                     for (let neighbor of this.forceVelocityCell.neighbors) {
                         for (let j = 0; j < neighbor.numParticles; j++) {
                             const p2 = neighbor.particles[j];
                             p2.Vx = vx * velocityMultiplier;
                             p2.Vy = vy * velocityMultiplier;
-                            p2.Fx = 0;
-                            p2.Fy = 0;
-                            p2.Fz = 0;
+
                         }
                     }
 
