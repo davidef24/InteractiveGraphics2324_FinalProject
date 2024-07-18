@@ -16,7 +16,7 @@ let gz = 0;
 let timestep= 1.0/70.0;
 //let clock= 0;
 
-let velocityMultiplier = 0.9;
+let velocityMultiplier = 2;
 
 let numGridCellsX;
 let numGridCellsY;
@@ -62,7 +62,7 @@ class Engine{
         }
     }
 
-    setSimulationParameters(mass, k, restDensity, viscosity, smoothingLength, ts) {
+    setSimulationParameters(mass, k, restDensity, viscosity, smoothingLength, ts, mouseMultiplier, gr_x, gr_y, gr_z) {
         h = smoothingLength;
         for(let p of this.particles){
             p.h = smoothingLength;
@@ -72,9 +72,7 @@ class Engine{
         rho0 = restDensity;
         mu = viscosity;
         timestep = ts;
-    }
-
-    setGravity(gr_x, gr_y, gr_z){
+        velocityMultiplier = mouseMultiplier;
         gx = gr_x;
         gy = gr_y;
         gz = gr_z;
@@ -130,10 +128,7 @@ class Engine{
         numGridCellsZ = Math.floor(this.zlimit);
         if(numGridCellsX == 0 || numGridCellsY == 0 || numGridCellsZ == 0) console.error("cells number cannot be zero");
         this.grid = new Grid3D(numGridCellsX, numGridCellsY, numGridCellsZ, this.xmin, this.xmax, this.ymin, this.ymax, this.zmin, this.zmax, domainScale);
-
         this.particles = []
-        
-        this.forceVelocityCell = null;  // cell where velocity should be forced when mouse is over it
     }
 
     getDensityContribution(particle1, particle2) {
@@ -374,18 +369,18 @@ class Engine{
     }
 
     // mouse over particles forces velocity based on mouse movement
-    forceVelocity(int_Objects, vx, vy) {
+    applyMouseForce(int_Objects, vx, vy) {
         for (let obj of int_Objects) {
             if (obj.object.geometry instanceof THREE.SphereGeometry) {
                 let mesh = obj.object;
-                this.forceVelocityCell = this.grid.getCellFromLocation2(mesh.position.x, mesh.position.y, mesh.position.z);
-                for (let i = 0; i < this.forceVelocityCell.numParticles; i++) {
-                    let p = this.forceVelocityCell.particles[i];
+                let cell = this.grid.getCellFromLocation2(mesh.position.x, mesh.position.y, mesh.position.z);
+                for (let i = 0; i < cell.numParticles; i++) {
+                    let p = cell.particles[i];
                     p.Vx = vx * velocityMultiplier;
                     p.Vy = vy * velocityMultiplier;
 
                     //force velocity even to all neighbours
-                    for (let neighbor of this.forceVelocityCell.neighbors) {
+                    for (let neighbor of cell.neighbors) {
                         for (let j = 0; j < neighbor.numParticles; j++) {
                             const p2 = neighbor.particles[j];
                             p2.Vx = vx * velocityMultiplier;
@@ -399,6 +394,7 @@ class Engine{
         }
     
     }
+    
 }
 
 export default Engine;

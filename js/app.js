@@ -4,6 +4,23 @@ import Engine from './engine.js'
 
 //window.addEventListener('load', init, false);
 
+let initial_parameters = {particles_n: 2000,
+    particle_radius: 0.007,
+    mass: 1.0,
+    k: 120,
+    rho0: 0,
+    mu: 5,
+    gx: 0,
+    gy: -9,
+    gz: 0,
+    h: 1.01,
+    timestep: 1.0/60.0,
+    lightX: 1,
+    lightY: 2,
+    lightZ: 2,
+    mouseForce: 1};
+
+
 // Constants
 const boxWidth = 0.90;
 const boxDepth = 0.55;
@@ -37,9 +54,13 @@ const panelOptions = {
     gravityZ: gz,
     lightX: 1, 
     lightY: 2, 
-    lightZ: 2, 
+    lightZ: 2,
+    mouseForce: 1, 
     startSim: function() {
         startSimulation();
+    },
+    resetSim: function() {
+        resetSimulation();
     }
 };
 //mouse events handling
@@ -112,7 +133,6 @@ function updateParticleCount(n) {
 
 function init(){
     updateSimulationParameters();
-    updateGravity();
     initScene();
     addListeners();
     updateParticleCount(panelOptions.particleCount);
@@ -135,14 +155,11 @@ function updateSimulationParameters() {
     let restDensity = panelOptions.restDensity;
     let viscosity = panelOptions.viscosity;
     let ts= panelOptions.timestep;
-    engine.setSimulationParameters(mass, gasConstant, restDensity, viscosity, h, ts);
-}
-
-function updateGravity() {
+    let mouseMultiplier= panelOptions.mouseForce;
     let gr_x = panelOptions.gravityX;
     let gr_y = panelOptions.gravityY;
     let gr_z = panelOptions.gravityZ;
-    engine.setGravity(gr_x, gr_y, gr_z);
+    engine.setSimulationParameters(mass, gasConstant, restDensity, viscosity, h, ts, mouseMultiplier, gr_x, gr_y, gr_z);
 }
 
 function updateLightPosition() {
@@ -165,15 +182,17 @@ function setGuiPanel(){
     gui.add(panelOptions, 'restDensity', 0, 5).step(0.1).name('Rest density').onChange(updateSimulationParameters);
     gui.add(panelOptions, 'viscosity', 0, 11).name('Viscosity').onChange(updateSimulationParameters);
     gui.add(panelOptions, 'smoothingLength', 1, 1.25).name('Smoothing length').step(0.001).onChange(updateSimulationParameters);
-    gui.add(panelOptions, 'gravityX', -100, 100).step(1).name('Gravity X').onChange(updateGravity);
-    gui.add(panelOptions, 'gravityY', -100, 100).step(1).name('Gravity Y').onChange(updateGravity);
-    gui.add(panelOptions, 'gravityZ', -100, 100).step(1).name('Gravity Z').onChange(updateGravity);
+    gui.add(panelOptions, 'gravityX', -100, 100).step(1).name('Gravity X').onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'gravityY', -100, 100).step(1).name('Gravity Y').onChange(updateSimulationParameters);
+    gui.add(panelOptions, 'gravityZ', -100, 100).step(1).name('Gravity Z').onChange(updateSimulationParameters);
     gui.add(panelOptions, 'lightX', -10, 10).step(0.01).name('Light X').onChange(updateLightPosition);
     gui.add(panelOptions, 'lightY', -10, 10).step(0.01).name('Light Y').onChange(updateLightPosition);
     gui.add(panelOptions, 'lightZ', -10, 10).step(0.01).name('Light Z').onChange(updateLightPosition);
+    gui.add(panelOptions, 'mouseForce', 0, 5).name('Mouse multiplier').step(0.01).onChange(updateSimulationParameters);
     gui.add(panelOptions, 'timestep', 0.01, 0.021).name('Time step').step(0.001).onChange(updateSimulationParameters);
 
     gui.add(panelOptions, 'startSim').name('Start Simulation');
+    gui.add(panelOptions, 'resetSim').name('Reset Simulation');
 }
 
 function getMousePosition(event, element){
@@ -231,8 +250,24 @@ function mouseMoveHandler(event) {
     let int_Objects = castRay(mousePos.x, mousePos.y, renderer.domElement, camera);
     //console.log("[FORCE VELOCITY] intersected objects ", int_Objects);
     if(int_Objects != null) {
-        engine.forceVelocity(int_Objects, event.movementX, event.movementY);
+        engine.applyMouseForce(int_Objects, event.movementX, event.movementY);
     }
+}
+
+
+function resetSimulation() {
+    // Reset the engine and scene
+    engine = new Engine(boxWidth, boxHeight, boxDepth, -halfWidth, halfWidth, -halfHeight, halfHeight, -halfDepth, halfDepth);
+
+    particleMeshes.forEach(mesh => scene.remove(mesh));
+    particleMeshes = [];
+    
+    // Reinitialize the scene
+    initScene();
+    updateParticleCount(panelOptions.particleCount);
+    updateSimulationParameters();
+    updateLightPosition();
+    renderer.render(scene, camera);
 }
 
 

@@ -111,7 +111,7 @@ class Grid3D {
         const cellIndex = this.getCellIndexFromLocation(particle.x, particle.y, particle.z);
         const cell = this.cells[cellIndex];
       
-        if (cell !== undefined && cell.numParticles < cell.max_particles) {
+        if (cell !== undefined && cell !== null && cell.numParticles < cell.max_particles) {
           cell.particles[cell.numParticles++] = particle;
         } else {
           // Try to find a neighboring cell with available space
