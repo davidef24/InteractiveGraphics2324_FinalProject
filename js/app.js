@@ -35,6 +35,9 @@ const panelOptions = {
     gravityX: gx,
     gravityY: gy,
     gravityZ: gz,
+    lightX: 1, 
+    lightY: 2, 
+    lightZ: 2, 
     startSim: function() {
         startSimulation();
     }
@@ -70,8 +73,15 @@ const ambientLight = new THREE.AmbientLight(0x404040, 2.0); // soft white light
 scene.add(ambientLight);
 
 const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-pointLight.position.set(1, 2, 2);
+pointLight.position.set(panelOptions.lightX, panelOptions.lightY, panelOptions.lightZ);
 scene.add(pointLight);
+
+// Light helper sphere
+const lightHelperGeometry = new THREE.SphereGeometry(0.05, 20, 10);
+const lightHelperMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, transparent: true, wireframe: true });
+const lightHelper = new THREE.Mesh(lightHelperGeometry, lightHelperMaterial);
+lightHelper.position.copy(pointLight.position);
+scene.add(lightHelper);
 
 
 
@@ -135,6 +145,11 @@ function updateGravity() {
     engine.setGravity(gr_x, gr_y, gr_z);
 }
 
+function updateLightPosition() {
+    pointLight.position.set(panelOptions.lightX, panelOptions.lightY, panelOptions.lightZ);
+    lightHelper.position.copy(pointLight.position);
+}
+
 
 function setGuiPanel(){
     gui.add(panelOptions, 'particleCount', 0, 10000).name('Particle count').step(1).onChange(value => {
@@ -153,6 +168,9 @@ function setGuiPanel(){
     gui.add(panelOptions, 'gravityX', -100, 100).step(1).name('Gravity X').onChange(updateGravity);
     gui.add(panelOptions, 'gravityY', -100, 100).step(1).name('Gravity Y').onChange(updateGravity);
     gui.add(panelOptions, 'gravityZ', -100, 100).step(1).name('Gravity Z').onChange(updateGravity);
+    gui.add(panelOptions, 'lightX', -10, 10).step(0.01).name('Light X').onChange(updateLightPosition);
+    gui.add(panelOptions, 'lightY', -10, 10).step(0.01).name('Light Y').onChange(updateLightPosition);
+    gui.add(panelOptions, 'lightZ', -10, 10).step(0.01).name('Light Z').onChange(updateLightPosition);
     gui.add(panelOptions, 'timestep', 0.01, 0.021).name('Time step').step(0.001).onChange(updateSimulationParameters);
 
     gui.add(panelOptions, 'startSim').name('Start Simulation');
@@ -174,7 +192,7 @@ function mouseDownHandler(event) {
 }
 
 //to force velocity
-function mapMouseToWorld(x, y, canvas, camera) {
+function castRay(x, y, canvas, camera) {
     // get the normalized device coordinates (NDC) of the mouse, required for setFromCamera API of raycaster
     let ndcX = (x / canvas.clientWidth) * 2 - 1;
     let ndcY = - (y / canvas.clientHeight) * 2 + 1;  // "-" sign is due to the fact that canvas y-coordinate increases downward while 
@@ -210,7 +228,7 @@ function mouseMoveHandler(event) {
     }
 
     let mousePos = getMousePosition(event, renderer.domElement);
-    let int_Objects = mapMouseToWorld(mousePos.x, mousePos.y, renderer.domElement, camera);
+    let int_Objects = castRay(mousePos.x, mousePos.y, renderer.domElement, camera);
     //console.log("[FORCE VELOCITY] intersected objects ", int_Objects);
     if(int_Objects != null) {
         engine.forceVelocity(int_Objects, event.movementX, event.movementY);

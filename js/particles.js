@@ -21,7 +21,7 @@ class Particle {
         this.Fz = 0;
         this.rho = 0; 
         this.pressure = 0; 
-        this.colorField = {x: 0, y:0, z:0};    
+        //this.colorField = {x: 0, y:0, z:0};    
         this.m = mass;    
     }
 
