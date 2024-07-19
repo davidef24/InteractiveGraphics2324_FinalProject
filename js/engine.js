@@ -101,8 +101,6 @@ class Engine{
         //console.log("[ENGINE] ALL PARTICLES ARE", this.particles);
     }
     
-    
-
     constructor(width, height, depth, left, right, bottom, top, front, back){
 
         while (left >= width) {
@@ -138,7 +136,7 @@ class Engine{
         } else {
           return 0;
         }
-      }
+    }
 
     
     computeDensity() {
@@ -147,7 +145,7 @@ class Engine{
           // Loop through all particles in the current cell
           for (let i = 0; i < cell.numParticles; i++) {
             const particle1 = cell.particles[i];
-      
+        
             // Calculate density contribution from neighboring particles (within cell and neighbors)
             let densityContribution = 0;
             //start from i+1 such that each pair is considered only once
@@ -161,72 +159,72 @@ class Engine{
                 densityContribution += this.getDensityContribution(particle1, particle2);
               }
             }
-      
+        
             // Update particle density and pressure
             particle1.rho += densityContribution;
             particle1.pressure = Math.max(gasConstant * (particle1.rho - rho0), 0);
           }
         }
-      }
-       
-      updateParticleForces(p1, p2) {
-        let dist = this.distance(p1, p2);
-      
-        if (dist < Math.pow(h, 2)) {
-          let r = Math.sqrt(dist) + 1e-6; // Add a tiny bit to avoid divide by zero
-      
-          // Compute common terms
-          let avgPressure = (p1.pressure + p2.pressure) / 2;
-          let pressureFactor = m * avgPressure / p2.rho;
-          let viscosityFactor = mu * m * this.laplacian_WVisc(r) / p2.rho;
-      
-          // Compute forces
-          let pressureForce = this.computePressureForce(p1, p2, r, pressureFactor);
-          let viscosityForce = this.computeViscosityForce(p1, p2, viscosityFactor);
-      
-          // Total forces
-          let fx_total = pressureForce.x + viscosityForce.x;
-          let fy_total = pressureForce.y + viscosityForce.y;
-          let fz_total = pressureForce.z + viscosityForce.z;
-      
-          // Apply forces to particles 
-          // According to Newton's Third Law, when two particles exert forces on each other, the forces are equal in magnitude but opposite in direction. Hence, if particle 
-          // p1 exerts a force on particle p2, particle p2 exerts an equal and opposite force on particle p1
-          p1.Fx += fx_total;
-          p1.Fy += fy_total;
-          p1.Fz += fz_total;
-      
-          p2.Fx -= fx_total;
-          p2.Fy -= fy_total;
-          p2.Fz -= fz_total;
-        }
-      }
-      
-      computePressureForce(p1, p2, r, pressureFactor) {
-        let pressureGradient = this.gradient_Wspiky(r);
-        let temp1 = pressureFactor * pressureGradient;
-      
-        return {
-          x: temp1 * (p2.x - p1.x),
-          y: temp1 * (p2.y - p1.y),
-          z: temp1 * (p2.z - p1.z)
-        };
-      }
-      
-      computeViscosityForce(p1, p2, viscosityFactor) {
-        return {
-          x: viscosityFactor * (p2.Vx - p1.Vx),
-          y: viscosityFactor * (p2.Vy - p1.Vy),
-          z: viscosityFactor * (p2.Vz - p1.Vz)
-        };
-      }
-         
+    }
+     
+    updateParticleForces(p1, p2) {
+      let dist = this.distance(p1, p2);
     
-    addWallForces(p1) {
-        const applyBoundaryForce = (coord, minBound, maxBound, forceComponent) => {
+      if (dist < Math.pow(h, 2)) {
+        let r = Math.sqrt(dist) + 1e-6; // Add a tiny bit to avoid divide by zero
+    
+        // Compute common terms
+        let avgPressure = (p1.pressure + p2.pressure) / 2;
+        let pressureFactor = m * avgPressure / p2.rho;
+        let viscosityFactor = mu * m * this.laplacian_WVisc(r) / p2.rho;
+    
+        // Compute forces
+        let pressureForce = this.computePressureForce(p1, p2, r, pressureFactor);
+        let viscosityForce = this.computeViscosityForce(p1, p2, viscosityFactor);
+    
+        // Total forces
+        let fx_total = pressureForce.x + viscosityForce.x;
+        let fy_total = pressureForce.y + viscosityForce.y;
+        let fz_total = pressureForce.z + viscosityForce.z;
+    
+        // Apply forces to particles 
+        // According to Newton's Third Law, when two particles exert forces on each other, the forces are equal in magnitude but opposite in direction. Hence, if particle 
+        // p1 exerts a force on particle p2, particle p2 exerts an equal and opposite force on particle p1
+        p1.Fx += fx_total;
+        p1.Fy += fy_total;
+        p1.Fz += fz_total;
+    
+        p2.Fx -= fx_total;
+        p2.Fy -= fy_total;
+        p2.Fz -= fz_total;
+      }
+    }
+      
+    computePressureForce(p1, p2, r, pressureFactor) {
+      let pressureGradient = this.gradient_Wspiky(r);
+      let temp1 = pressureFactor * pressureGradient;
+    
+      return {
+        x: temp1 * (p2.x - p1.x),
+        y: temp1 * (p2.y - p1.y),
+        z: temp1 * (p2.z - p1.z)
+      };
+    }
+    
+    computeViscosityForce(p1, p2, viscosityFactor) {
+      return {
+        x: viscosityFactor * (p2.Vx - p1.Vx),
+        y: viscosityFactor * (p2.Vy - p1.Vy),
+        z: viscosityFactor * (p2.Vz - p1.Vz)
+      };
+    }
+         
+    //create a repulsive force weighted by the distance
+   addWallForces(p1) {
+       const applyBoundaryForce = (coord, minBound, maxBound, forceComponent) => {
             if (p1[coord] < minBound + h) {
                 let r = p1[coord] - minBound;
-                p1[forceComponent] -= kernelWeight(r);  //weight 
+                p1[forceComponent] -= kernelWeight(r); 
             } else if (p1[coord] > maxBound - h) {
                 let r = maxBound - p1[coord];
                 p1[forceComponent] += kernelWeight(r);
@@ -378,8 +376,6 @@ class Engine{
                     let p = cell.particles[i];
                     p.Vx = vx * velocityMultiplier;
                     p.Vy = vy * velocityMultiplier;
-
-                    //force velocity even to all neighbours
                     for (let neighbor of cell.neighbors) {
                         for (let j = 0; j < neighbor.numParticles; j++) {
                             const p2 = neighbor.particles[j];

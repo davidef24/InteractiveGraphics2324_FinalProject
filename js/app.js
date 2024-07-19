@@ -4,27 +4,11 @@ import Engine from './engine.js'
 
 //window.addEventListener('load', init, false);
 
-let initial_parameters = {particles_n: 2000,
-    particle_radius: 0.007,
-    mass: 1.0,
-    k: 120,
-    rho0: 0,
-    mu: 5,
-    gx: 0,
-    gy: -9,
-    gz: 0,
-    h: 1.01,
-    timestep: 1.0/60.0,
-    lightX: 1,
-    lightY: 2,
-    lightZ: 2,
-    mouseForce: 1};
-
 
 // Constants
-const boxWidth = 0.90;
-const boxDepth = 0.55;
-const boxHeight = 1;
+const boxWidth = 1.0;
+const boxDepth = 0.8;
+const boxHeight = 0.7;
 // GUI setup
 const gui = new GUI();
 let initial_particles_n = 2000;
