@@ -2,7 +2,7 @@
 *A real-time, interactive fluid simulator built with Three.js and WebGL, using Smoothed Particle Hydrodynamics (SPH) optimized via a 3D spatial grid.*
 
 
-Features
+#Features
 
 Physics Engine: Implements SPH for fluid dynamics (pressure, viscosity, gravity) with kernel functions (Poly6, Spiky, Viscosity).
 Optimized Performance: Uses a 3D spatial grid to reduce neighbor-search complexity from O(n²) to O(n).
@@ -20,10 +20,14 @@ Particles = Fluid: The system models fluid as thousands of interacting particles
 Grid Acceleration: Particles are sorted into a 3D grid to efficiently find neighbors.
 Forces Calculated Per-Frame: Density, pressure, and viscosity forces update particle positions.
 
-Why It’s Cool
+#Why It’s Cool
 
 Educational: Clean code structure to learn SPH or spatial optimization.
+
 Visual: Mesmerizing fluid behavior with tweakable parameters.
+
 Performant: Handles 10k+ particles smoothly thanks to grid optimization.
+
 Contributions welcome! Bug reports, optimizations, or new features.
+
 For kernels and forces formula https://matthias-research.github.io/pages/publications/sca03.pdf
